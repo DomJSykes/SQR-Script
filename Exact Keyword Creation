@@ -1,0 +1,57 @@
+function main() {
+  var ss = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/13jo6gwWi0JgKb4nS82jkmMIdHR4mRm6nBKCFL-5p8ag/edit#gid=586350889")  
+  var SQRQueries = ss.getRangeByName("SQR").getValues()
+  var KeywordSheet = ss.getSheetByName("New Keywords")
+  KeywordSheet.clear()
+  var comboSheet = ss.getSheetByName("Combo Sheet")
+  comboSheet.clear()
+  var categories = ss.getRangeByName("Categories").getValues()
+  buildExact(SQRQueries,categories,KeywordSheet,comboSheet)
+}
+
+function buildExact (SQRQueries,categories, KeywordSheet,comboSheet) {
+  for (var i = 0; i < SQRQueries.length; i++) {
+    var SQRQuery = SQRQueries[i][1]
+    var campaign = "UK|EN|GO|BRD|E"
+    var adGroup = ""
+    var combos = []
+    var SQRQueryWords = SQRQuery.split(" ")
+    for (var j = 0; j < categories.length; j++) {
+      if (SQRQuery.indexOf(categories[j][1]) > -1) {
+        for (var k = 0; k < SQRQueryWords.length; k++) {
+          if (SQRQueryWords[k] == categories[j][1]) {
+            var index = k
+          }
+        }
+        combos.push([index, categories[j][0]])
+        SQRQuery = SQRQuery.replace(categories[j][1],"")
+        if (campaign.indexOf(categories[j][2]) == -1) {
+          if (campaign == "UK|EN|GO|BRD|E") {
+            campaign = campaign + categories[j][2]
+          }
+          else {
+            campaign = campaign + " " + categories[j][2]
+          }
+        }
+        if (adGroup.indexOf(categories[j][3]) == -1) {
+          adGroup = adGroup + categories[j][3]
+        }
+        SQRQuery = SQRQuery.trim()
+        SQRQuery = SQRQuery.replace(/  +/g, ' ');
+      }
+    }
+    adGroup = campaign + adGroup
+    KeywordSheet.appendRow([SQRQueries[i][1],campaign,adGroup,SQRQuery])
+    combos.sort()
+    switch (combos.length) {
+      case 1:
+        comboSheet.appendRow([SQRQueries[i][1], combos[0][1]]); break;
+      case 2:
+        comboSheet.appendRow([SQRQueries[i][1], combos[0][1], combos[1][1]]); break;
+      case 3:
+        comboSheet.appendRow([SQRQueries[i][1], combos[0][1], combos[1][1], combos[2][1]]); break;
+      case 4:
+        comboSheet.appendRow([SQRQueries[i][1], combos[0][1], combos[1][1], combos[2][1], combos[3][1]]); break;
+    }
+  }
+}
