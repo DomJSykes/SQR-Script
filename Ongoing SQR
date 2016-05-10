@@ -1,0 +1,84 @@
+function main() {
+  var ss = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1jec_U9nb7tnye3W0fPNykJ1lpy1ruqN9pplTMejW-I0/edit#gid=0")
+  var OngoingSQRSheet = ss.getSheetByName("New Keywords")
+  OngoingSQRSheet.clear()
+  var phrases = ss.getRangeByName("Phrases").getValues()
+  var comboSheet = ss.getSheetByName("Combo Sheet")
+  comboSheet.clear()
+  var categories = ss.getRangeByName("Categories").getValues()
+  OngoingSQR(OngoingSQRSheet, phrases, categories, comboSheet)
+}
+
+function OngoingSQR(OngoingSQRSheet, phrases, categories, comboSheet) {
+  OngoingSQRSheet.appendRow(["Query","Fused Query","Clicks"])
+  OngoingSQRSheet.setFrozenRows(1)
+  var report = AdWordsApp.report(
+    "SELECT Query, Clicks, KeywordTextMatchingQuery, QueryMatchTypeWithVariant " +
+    "FROM SEARCH_QUERY_PERFORMANCE_REPORT " +
+    "WHERE Clicks > 5 " +
+    "DURING LAST_30_DAYS");  
+  var rows = report.rows()
+  while (rows.hasNext()) {
+    var row = rows.next()
+    var query = row["Query"]
+    var clicks = row["Clicks"]
+    if (row["KeywordTextMatchingQuery"] != query) {
+      var fpPhrase = fusePhrases(query, phrases)
+      var newKeyword = buildExact(fpPhrase, categories, comboSheet)
+      OngoingSQRSheet.appendRow([query, fpPhrase, clicks, row["KeywordTextMatchingQuery"], row["QueryMatchTypeWithVariant"], newKeyword[0], newKeyword[1]])
+    }
+  }
+  OngoingSQRSheet.sort(3, false)
+}
+
+function fusePhrases(query, phrases) {
+  for (var i = 0; i < phrases.length; i++) {
+    if (query.indexOf(phrases[i][0]) > -1) {
+      query = query.replace(phrases[i][0],phrases[i][1])
+    }
+  }
+  return query
+}
+
+
+function buildExact (query,categories,comboSheet) {
+  var SQRQuery = query
+  var campaign = "UK|EN|GO|BRD|E"
+  var adGroup = ""
+  var combos = []
+  var newKeyword = []
+  var SQRQueryWords = SQRQuery.split(" ")
+  for (var j = 0; j < categories.length; j++) {
+    if (SQRQuery.indexOf(categories[j][1]) > -1) {
+      for (var k = 0; k < SQRQueryWords.length; k++) {
+        if (SQRQueryWords[k] == categories[j][1]) {
+          var index = k
+        }
+      }
+      combos.push([index, categories[j][0]])
+      SQRQuery = SQRQuery.replace(categories[j][1],"")
+      if (campaign.indexOf(categories[j][2]) == -1) {
+        campaign = campaign + categories[j][2]
+      }
+      if (adGroup.indexOf(categories[j][3]) == -1) {
+        adGroup = adGroup + categories[j][3]
+      }
+      SQRQuery = SQRQuery.trim()
+      SQRQuery = SQRQuery.replace(/  +/g, ' ');
+    }
+  }
+  adGroup = campaign + adGroup
+  newKeyword = [campaign,adGroup,SQRQuery]
+  combos.sort()
+  switch (combos.length) {
+    case 1:
+      comboSheet.appendRow([SQRQuery, combos[0][1]]); break;
+    case 2:
+      comboSheet.appendRow([SQRQuery, combos[0][1], combos[1][1]]); break;
+    case 3:
+      comboSheet.appendRow([SQRQuery, combos[0][1], combos[1][1], combos[2][1]]); break;
+    case 4:
+      comboSheet.appendRow([SQRQuery, combos[0][1], combos[1][1], combos[2][1], combos[3][1]]); break;
+  }
+  return newKeyword
+}
