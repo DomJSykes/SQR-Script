@@ -1,0 +1,37 @@
+function main() {
+  var ss = SpreadsheetApp.openByUrl("")
+  var SQRSheet = ss.getSheetByName("SQR")
+  SQRSheet.clear()
+  var phrases = ss.getRangeByName("Phrases").getValues()
+  SQR(SQRSheet, phrases)
+}
+
+function SQR(SQRSheet, phrases) {
+  SQRSheet.appendRow(["Query","Fused Query","Clicks"])
+  SQRSheet.setFrozenRows(1)
+  var report = AdWordsApp.report(
+    "SELECT Query, Clicks " +
+    "FROM SEARCH_QUERY_PERFORMANCE_REPORT " +
+    "WHERE Clicks > 5 " +
+    "DURING LAST_30_DAYS");  
+  var rows = report.rows()
+  while (rows.hasNext()) {
+    var row = rows.next()
+    var query = row["Query"]
+    var clicks = row["Clicks"]
+    var fpPhrase = fusePhrases(query, phrases)
+/*    var fpSwPhrase = stopWords(query)
+    var fpSwFpPhrase = fusePhrases(fpSwPhrase, phrases) */
+    SQRSheet.appendRow([query, fpPhrase, clicks])
+  }
+  SQRSheet.sort(3, false)
+}
+
+function fusePhrases(query, phrases) {
+  for (var i = 0; i < phrases.length; i++) {
+    if (query.indexOf(phrases[i][0]) > -1) {
+      query = query.replace(phrases[i][0],phrases[i][1])
+    }
+  }
+  return query
+}
